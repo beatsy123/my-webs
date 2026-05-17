@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PantryGo — Defense Panel Simulator</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; padding: 1.5rem; min-height: 100vh; }
+.wrap { max-width: 820px; margin: 0 auto; }
+.header { margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #e0e0d8; }
+.header h1 { font-size: 21px; font-weight: 700; }
+.header p { font-size: 13.5px; color: #666; margin-top: 5px; line-height: 1.6; }
+.stats { display: flex; gap: 10px; margin-bottom: 1rem; flex-wrap: wrap; }
+.stat { background: #fff; border: 1px solid #e8e8e0; border-radius: 8px; padding: 7px 14px; font-size: 13px; color: #555; }
+.stat b { color: #3C3489; }
+.cats { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 1rem; }
+.cat-btn { font-size: 12.5px; padding: 5px 13px; border-radius: 20px; border: 1px solid #ccc; background: #fff; color: #555; cursor: pointer; transition: all 0.12s; }
+.cat-btn:hover { border-color: #7F77DD; color: #3C3489; }
+.cat-btn.active { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; font-weight: 700; }
+.progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.progress-text { font-size: 13px; color: #888; white-space: nowrap; }
+.score-bar { flex: 1; background: #eee; border-radius: 8px; height: 5px; overflow: hidden; }
+.score-fill { background: linear-gradient(90deg,#7F77DD,#5DC6AA); height: 100%; border-radius: 8px; transition: width 0.3s; }
+.q-card { background: #fff; border: 1px solid #e8e8e0; border-radius: 12px; padding: 1.4rem 1.5rem; margin-bottom: 1rem; }
+.q-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; flex-wrap: wrap; }
+.q-num { font-size: 12px; color: #bbb; font-weight: 600; }
+.q-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; font-weight: 700; }
+.tag-title    { background:#EEEDFE; color:#3C3489; }
+.tag-algo     { background:#E6F1FB; color:#0C447C; }
+.tag-gap      { background:#EAF3DE; color:#27500A; }
+.tag-scope    { background:#FAEEDA; color:#633806; }
+.tag-survey   { background:#FBEAF0; color:#72243E; }
+.tag-ui       { background:#FAECE7; color:#712B13; }
+.tag-genprob  { background:#F0F7FF; color:#1a4d80; }
+.tag-techprob { background:#FFF3E0; color:#7a3d00; }
+.tag-cnn      { background:#F3FFF3; color:#1a5c1a; }
+.tag-ben      { background:#FFF0FB; color:#6b0e5c; }
+.q-text { font-size: 15.5px; color: #111; line-height: 1.6; font-weight: 600; margin-bottom: 14px; }
+.diff { font-size: 11px; padding: 2px 9px; border-radius: 10px; font-weight: 600; margin-left: auto; }
+.diff-easy   { background:#EAF3DE; color:#3B6D11; }
+.diff-medium { background:#FAEEDA; color:#854F0B; }
+.diff-hard   { background:#FCEBEB; color:#A32D2D; }
+.show-btn { font-size: 13px; padding: 7px 17px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #444; cursor: pointer; }
+.show-btn:hover { background: #f0f0ec; }
+.answer { margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; display: none; }
+.answer.visible { display: block; }
+.answer-text { font-size: 14.5px; color: #222; line-height: 1.78; margin-bottom: 13px; }
+.evidence { background: #f8f6ff; border-left: 3px solid #7F77DD; border-radius: 0 8px 8px 0; padding: 11px 15px; }
+.ev-label { font-size: 11px; font-weight: 700; color: #534AB7; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+.evidence p { font-size: 13px; color: #555; line-height: 1.65; }
+.nav-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1.4rem; }
+.nav-row button { font-size: 13px; padding: 7px 17px; border-radius: 8px; border: 1px solid #ccc; background: #fff; color: #333; cursor: pointer; }
+.nav-row button:hover { background: #EEEDFE; border-color: #AFA9EC; color: #3C3489; }
+.tip { font-size: 12px; color: #aaa; margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid #eee; line-height: 1.65; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h1>PantryGo — Capstone Defense Panel Simulator</h1>
+    <p>Practice every likely panel question with model answers backed by direct evidence from your paper. Filter by category, answer out loud first, then reveal.</p>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="cats" id="cats"></div>
+  <div class="progress-row">
+    <span class="progress-text" id="progress">Question 1 of 1</span>
+    <div class="score-bar"><div class="score-fill" id="scorefill" style="width:0%"></div></div>
+  </div>
+  <div id="qlist"></div>
+  <div class="nav-row">
+    <button onclick="prevQ()">&#8592; Previous</button>
+    <button onclick="nextQ()">Next &#8594;</button>
+    <button onclick="shuffleQ()">&#8635; Shuffle</button>
+    <button onclick="showAll()" style="margin-left:auto;">Show All Q&amp;A</button>
+  </div>
+  <div class="tip"><b>Defense tip:</b> The panel will almost always ask follow-up "why" questions after your first answer. Know your author citations by name and year. Hard questions (red badge) are the ones most likely to catch you off guard — practice those extra.</div>
+</div>
+
+<script>
+var ALL = [
+
+/* ══════════════════════════════════════════════
+   TARGET BENEFICIARIES
+══════════════════════════════════════════════ */
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"easy",
+  q:"Who exactly are the target beneficiaries of PantryGo? Can you enumerate them and explain why each group was chosen?",
+  a:"PantryGo targets two primary groups: (1) Filipino families — specifically parents and children who collectively manage shared grocery inventories and face challenges with bulk purchasing, pantry organization, and monitoring multiple items across different expiry dates; and (2) Busy working employees who live alone — individuals whose time constraints prevent them from carefully tracking food freshness and expiration dates on their own. These two groups were chosen because the survey of 201 respondents confirmed that both experience the same core problems: difficulty reading expiration dates, unintentional food waste, and the absence of a reliable digital tracking system.",
+  evidence:"Evidence from paper (Scope): 'The project targets Filipino households that often purchase their food stocks in a grocery store or in a supermarket. These households often include not just the parents and children but also the busy employees who are living alone, focusing on the common challenges of overlooking expiration dates and the inefficiency of manually tracking individual food items.'"
+},
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"hard",
+  q:"Why are working employees who live alone included as a target beneficiary? What specific features of PantryGo benefit a person living by themselves?",
+  a:"Working employees who live alone are included because they face the sharpest version of the problem PantryGo solves: they are the only person responsible for their food inventory, have limited time due to work schedules, and are most susceptible to the 'set and forget' behavior — buying groceries, storing them, and forgetting about them until they spoil. Huseynov and Palma (2021) specifically found that time constraints among working individuals significantly limit their ability to review product information like expiration dates. For this user, PantryGo's OCR scanning quickly logs items without manual effort, the dashboard gives an instant overview of their entire stock, and the automated push notifications act as a personal reminder system — compensating for the lack of another household member who might notice expiring items.",
+  evidence:"Evidence from paper (Scope): 'These households often include not just the parents and children but also the busy employees who are living alone, focusing on the common challenges of overlooking expiration dates and the inefficiency of manually tracking individual food items.' RRL: 'Huseynov and Palma (2021) study indicates that time constraints are common among homeowners and working individuals wherein it significantly limits their ability to gather the product information they are buying.'"
+},
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"hard",
+  q:"The PantryID feature allows linking up to 3 users to share one pantry. But if a working employee lives alone, who would they link with? What is the purpose of that feature for them?",
+  a:"This is an important distinction. A solo-living working employee would not necessarily use the PantryID linking feature in the same way a family would. However, the feature still has value for them in two scenarios: (1) They may share a rental unit with a housemate or flatmate and want to maintain a shared kitchen inventory — PantryID allows that without requiring a family setup; (2) They may want a trusted person — such as a parent or partner living elsewhere — to remotely monitor their pantry and help manage restocking. The PantryID feature is not mandatory; it is an optional collaborative layer. Solo users get full value from PantryGo's individual features: OCR scanning, CNN freshness detection, the personal dashboard, and automated notifications — all of which function independently of any pantry linking.",
+  evidence:"Evidence from paper (Scope): 'The application's technical framework will use a Decoupled Multi-tenant Architecture that keeps personal accounts secure while allowing for shared use. Through Firebase Auth, users maintain secure individual accounts while accessing a shared household inventory through a unique PantryID.' The Decoupled architecture means individual account use is always independent from the collaborative layer — linking is optional."
+},
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"medium",
+  q:"Your study mentions families with children as target beneficiaries. What age range does 'children' refer to, and what is the justification for including them?",
+  a:"The paper does not explicitly define a specific age range for 'children' in the beneficiary description. However, within the context of the study, 'children' refers to minor dependents living within the household — practically, children aged 12 and below who are not independently managing grocery items. They are included as beneficiaries not as active users of the app, but as indirect beneficiaries: parents using PantryGo to manage the household inventory ensure that the food their children consume is within its expiry period and has been assessed for freshness. The CNN freshness detection for pork and chicken is particularly relevant here, as these are common staple meats in Filipino family meals.",
+  evidence:"Evidence from paper (Scope): 'The project targets Filipino households that often purchase their food stocks in a grocery store or in a supermarket. These households often include not just the parents and children...' The paper does not specify a strict age cutoff. The framing is 'household members who are dependents,' with parents as the primary active users managing the shared inventory on behalf of the family."
+},
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"hard",
+  q:"If children are listed as beneficiaries, should they be considered users of PantryGo? Can a 12-year-old child use the application?",
+  a:"Children aged 12 and below are positioned as indirect beneficiaries — they benefit from the outcomes of PantryGo usage (safer, fresher food in the household) rather than being expected to operate the application themselves. PantryGo is designed for the adult household manager — the parent, guardian, or working individual — who has the smartphone access, the account credentials, and the decision-making responsibility for grocery management. A 12-year-old child does not independently shop for or manage groceries; the parent does. However, a teenager (13 and above) who is tech-literate could potentially use the app. The application is described as 'user-friendly and simple to operate so that even those with little technical knowledge can enjoy the application,' which means it is accessible to a wide age range.",
+  evidence:"Evidence from paper (Purpose & Description): 'The application has been made to be user-friendly and simple to operate so that even those with little technical knowledge can enjoy the application.' Scope: 'These households often include not just the parents and children' — the framing positions children as household members served by the system, not as operators of it."
+},
+{ cat:"ben", tag:"tag-ben", catLabel:"Target Beneficiaries", diff:"medium",
+  q:"Why didn't you include senior citizens or elderly Filipinos as a target beneficiary, given that they also struggle with reading small expiration date labels?",
+  a:"The study's primary focus was on active household managers who engage in grocery shopping — typically working adults and parents. However, elderly Filipinos who struggle to read small expiration date labels are, in fact, one of the groups the system implicitly serves, because the OCR feature directly solves the problem of small or unclear print. The survey finding that 91% of respondents found it difficult to read or locate expiration dates applies across age groups. The study chose not to explicitly segment senior citizens as a separate beneficiary group, but the system's design — simple UI, automated alerts, and large readable dashboard — makes it accessible to older users as well. This can be acknowledged as a potential future beneficiary group worth explicitly studying."
+  ,
+  evidence:"Evidence from paper (Project Context): '59.7% strongly agreed and 31.3% agreed that they find it difficult to read or locate expiration dates due to small print or non-standard formats.' Purpose & Description: 'The application has been made to be user-friendly and simple to operate so that even those with little technical knowledge can enjoy the application' — which by implication includes users of varying ages and technical backgrounds."
+},
+
+/* ══════════════════════════════════════════════
+   UI & FEATURES (FOCUSED)
+══════════════════════════════════════════════ */
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"easy",
+  q:"Can you walk us through every main screen of PantryGo from the moment a user opens the app for the first time?",
+  a:"The full first-time flow is: (1) Splash Screen — the PantryGo logo appears centered while the app loads. (2) Main Module / Get Started — a clean screen with the logo and a 'Get Started' button for first-time users. (3) Sign Up Screen — the user enters their email, username, and password, and accepts the Terms and Conditions. (4) Log In Screen — for returning users; includes a 'Remember Me' checkbox and a Forgot Password link. (5) Forgot Password — user submits their email and receives a 6-digit verification code. (6) Home Dashboard — after login, shows four color-coded pantry status cards (In Stock, Expiring Soon, Expired, Consumed), a calendar with expiry events, and recent activity. From the dashboard, users access Inventory, Add Product, Notifications, Family Management, and Profile Settings via the bottom navigation.",
+  evidence:"Evidence from paper (Storyboard): Screens 8–16 progressively describe the Splash Screen, Main Module, Log-In, Forgot Password, Verification Code, Sign Up, Home Dashboard, and Expiring Soon List. 'This screen ensures the user gets a chance to wait while the application loads before proceeding to the next step.' Dashboard: 'It displays a personalized welcome message and a brief overview of the current status of the user's pantry through four color-cards: in stock, expiring soon, expired, and consumed.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"easy",
+  q:"What information does the Home Dashboard display, and why is each element there?",
+  a:"The Home Dashboard displays: (1) A personalized welcome message — to give the app a human, approachable feel. (2) Four color-coded status cards — 'In Stock,' 'Expiring Soon,' 'Expired,' and 'Consumed' — giving users an instant quantified overview of their pantry health without drilling into the full inventory list. (3) A calendar section — which visually marks dates where expiry events fall, differentiating fresh items from soon-to-expire or expired ones, so users can plan consumption around upcoming expirations. (4) A recent activity list at the bottom — showing the latest pantry actions (items scanned, consumed, or expired). This layout was designed to transfer maximum information at a glance, reducing the cognitive effort required for pantry monitoring.",
+  evidence:"Evidence from paper (Storyboard Screen 14): 'It displays a personalized welcome message and a brief overview of the current status of the user's pantry through four color-cards: in stock, expiring soon, expired, and consumed. Under, is a calendar section that marks dates that have any expiry event, differentiating fresh, from soon-to-expire or expired products. Towards the bottom is a list of the screen activity.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"How does the Expiring Soon List work, and how does it help users prioritize what to consume first?",
+  a:"The Expiring Soon List is a dedicated screen that shows a scrollable list of all pantry items nearing their expiration date. Each item is labeled with a color-coded urgency indicator alongside the number of days remaining before expiry — allowing users to immediately see which items require the most urgent attention. Items with fewer days remaining appear with a more urgent color (e.g., red or orange), while those with more days left appear in a less alarming color. This visual prioritization directly addresses the survey finding that 87.6% of respondents admitted products at the back of the pantry often go unnoticed until spoiled — by digitally surfacing all at-risk items in one scrollable list regardless of where they are physically stored.",
+  evidence:"Evidence from paper (Storyboard Screen 15): 'Expiring Soon List – This figure shows the scrollable full list of pantry items nearing their expiration date, each labeled with a color-coded urgency indicator with the number of days remaining before they expire.' Survey: '87.6% confessed that products kept at the back of the pantry often go unnoticed until they become unfit for eating.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"How does the Inventory screen work? How are items organized, and how can users view or manage specific items?",
+  a:"The Inventory screen organizes all pantry items by category (e.g., dairy, beverages, canned goods, fresh meat) so users can browse items in a structured, logical way rather than scrolling through a flat list. Tapping a category opens the Category Item List Screen, which shows all items within that category and includes tabs to toggle between active items and consumed items. Tapping a specific item opens the Item Detail and Consume screen, where the user can log how many units were consumed or remove the item permanently. Consumed items appear crossed out in the list as confirmation. This structure mirrors how a physical pantry is organized — by type — making the digital experience intuitive for all users.",
+  evidence:"Evidence from paper (Storyboard): Screen 18 — 'the main inventory page where the user can browse all pantry items in an organized way by item category.' Screen 19 — 'a filtered list of items within the selected category, with tabs to toggle between active and consumed items.' Screen 20 — 'the user can log how many units were consumed or remove the item from the inventory.' Screen 22 — 'a consumed item appears and already crossed-out, confirming it has been successfully recorded.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"How does a user add a fresh meat item step by step? What does the UI show after the CNN classifies the meat?",
+  a:"Step by step: (1) The user taps 'Add Product' and the slide-up panel offers two paths — Packaged Goods or Fresh Meat. (2) Selecting Fresh Meat opens the Fresh Meat Camera Scan screen — a full-screen camera interface with a shutter button and cancel option. (3) The user captures the exposed meat surface. The CNN (MobileNetV2 via TensorFlow Lite) analyzes the image and returns a freshness classification — Fresh or Spoiled. (4) The Fresh Meat Details Entry screen is shown, displaying the CNN result alongside a meat type selector (pork or chicken), a date picker, a quantity field, a unit selector (pieces, kg, grams), and an optional notes area. (5) The system also provides USDA-based shelf-life estimates for ambient and refrigerator/freezer storage. (6) The user taps save and the entry is added to the inventory.",
+  evidence:"Evidence from paper: Screen 23 (Add Product Type Selection) — 'a slide-up panel offering two distinct product entry paths.' Screen 24 (Fresh Meat Camera Scan) — 'a full-screen camera interface with a shutter button and a cancel option, used to capture an image of fresh meat for freshness evaluation.' Screen 25 (Fresh Meat Details Entry) — 'displaying the freshness result, a meat type selector with options, a date picker, quantity and unit fields, and a notes area.' Scope: 'provides estimation details of freshness based on two primary storage environments: ambient temperature and freezer or chilled conditions.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"What is the Notification screen for? How are users notified about expiring items?",
+  a:"The Notification screen is a centralized notifications center within the app where users can review all alerts — both expiry warnings and incoming pantry link requests from other users. Push notifications are delivered to the device by Firebase Cloud Messaging (FCM) even when the app is in the background, alerting users 3 to 5 days before an item expires. The minimum threshold can be customized down to 3 days via the Notification Preferences screen under Profile Settings. This two-level notification system — in-app center plus device-level push — ensures users receive timely alerts regardless of whether they are actively using PantryGo.",
+  evidence:"Evidence from paper (Storyboard Screen 16): 'Notification – the notifications center where the user receives alerts about expiring items and incoming pantry link requests from other users.' Technical Background: 'Firebase Cloud Messaging (FCM) to build an automated notification system. This system will send alerts 3–5 days before an item expires.' Screen 26 (Notification Preferences): 'They can activate or deactivate expiry alerts and set how many days in advance they wish to be informed with the minimum of 3 Days.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"hard",
+  q:"What happens when a user taps a notification about an expiring item? Where does it take them in the app?",
+  a:"The paper does not explicitly detail the deep-link destination when a notification is tapped. However, based on the application's described flow, tapping a push notification would logically navigate the user to the relevant item's detail page or the Expiring Soon List, depending on implementation. The notification system is designed to raise awareness and guide action — so the intent is for users to tap through to their inventory and act on the alert (consume or note the item). This is one area where the storyboard focuses on the notification center UI rather than the deep-link behavior, and could be flagged as a design detail that was refined during the development phase.",
+  evidence:"Evidence from paper (Storyboard Screen 16): 'the notifications center where the user receives alerts about expiring items and incoming pantry link requests from other users.' The paper describes the notification trigger and delivery mechanism via FCM but does not diagram the specific tap-to-screen navigation behavior, which would be specified in the development implementation."
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"How does the Family Activity screen work, and what specific information does it show to a linked household member?",
+  a:"The Family Activity screen shows a list of all linked household members (up to 3 including the user) alongside the number of pantry items each of them has consumed. A badge at the top right corner shows the total number of members currently in the group. Tapping a specific member opens the Family Member Detail screen, which reveals that member's full consumption history — including the items they consumed, the category of each item, and the date of consumption. This feature is especially useful for households where multiple people share the same pantry, allowing everyone to stay aware of what has been used and avoid duplicate purchasing.",
+  evidence:"Evidence from paper (Storyboard): Screen 30 (Family Activity Screen) — 'listing all linked household members alongside the number of pantry items each of them has consumed. A small badge at the top right corner of the screen shows the total number of members currently in the group.' Screen 31 (Family Member Detail) — 'revealing the items they have used along with the category and date.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"hard",
+  q:"Why did you include a 'Consumed' tracking feature in PantryGo? What problem does it specifically solve?",
+  a:"The 'Consumed' tracking feature solves the problem of duplicate purchasing — the second major financial consequence identified in the study. When a household member consumes an item and marks it in PantryGo, that action is immediately reflected in the shared real-time inventory via Firestore Snapshots. Any other linked user checking the pantry from a different location will see the updated stock count, preventing them from buying a replacement item that was already purchased or assuming something is still in stock when it has been consumed. The survey found that 41.3% of respondents strongly agreed they often purchase duplicate items due to lack of a current food supply record — the consumed tracking feature directly addresses this.",
+  evidence:"Evidence from paper (Storyboard Screen 20): 'Item Detail and Consume – the user can log how many units were consumed or remove the item from the inventory.' Objectives: 'By implementing Firebase as a centralized database, the application will ensure that inventory counts and shelf-life data are updated and synchronized in real-time across all registered user devices.' Survey: '41.3% of respondents strongly agreeing and 38.8% agreeing that they often purchase duplicate items due to the lack of a current food supply record.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"medium",
+  q:"What options are available in the Profile Settings screen, and why is each setting important?",
+  a:"The Profile Settings screen provides: (1) Account information — the user's profile name, email, and pantry statistics (summary of inventory health). (2) Notification Preferences — allows toggling expiry alerts on/off and setting the advance notice threshold (minimum 3 days). (3) Family Management — shows the user's unique PantryID, allows searching for other users by their ID, and lists currently linked pantries with a remove option. (4) Sign Out — securely logs the user out. Each setting directly serves a key design goal: notification preferences give users control over alert frequency; family management enables the collaborative PantryID feature; sign out ensures security on shared devices.",
+  evidence:"Evidence from paper (Storyboard Screen 32): 'Profile Settings – showing the user's profile page with their account information, pantry statistics, and access to settings such as notifications, family management, and sign out.' Screen 33 (Notification Preferences): 'a setting panel with a toggle for expiry alerts and a numeric input for setting how many days in advance the user wants to be notified.' Screen 34 (Family Management Setting): 'shows where the shareable PantryID is, a search field to find another users by searching their ID to linked with, and a list of currently linked pantries with a remove option.'"
+},
+{ cat:"ui", tag:"tag-ui", catLabel:"UI & Features", diff:"hard",
+  q:"Why does PantryGo use a bottom navigation bar instead of a hamburger menu or a side drawer? What UX principle justifies this design choice?",
+  a:"The bottom navigation bar was chosen for alignment with Android Material Design principles and the behavioral reality of smartphone usage — most users hold their phones with one hand and interact with their thumbs, making bottom-positioned navigation the most ergonomically accessible pattern. A hamburger menu requires an extra tap to reveal options and keeps navigation hidden, which is a friction point for users who need to switch between sections frequently. Since PantryGo's users will regularly move between the Dashboard, Inventory, Add Product, Notifications, and Profile sections — especially while multitasking during cooking or grocery shopping — bottom navigation provides persistent, one-tap access to all primary sections without additional taps.",
+  evidence:"Evidence from paper (Purpose & Description): 'The application has been made to be user-friendly and simple to operate so that even those with little technical knowledge can enjoy the application.' Storyboard Screen 14 (Home Dashboard): 'with a navigation tab at the bottom' — confirming the design choice. The application targets users across a wide range of technical proficiency, which further justifies the simpler, always-visible navigation pattern over a hidden hamburger menu."
+},
+
+/* ══════════════════════════════════════════════
+   GENERAL PROBLEMS
+══════════════════════════════════════════════ */
+{ cat:"genprob", tag:"tag-genprob", catLabel:"General Problems", diff:"easy",
+  q:"In general, what is the main problem your study is trying to solve?",
+  a:"PantryGo addresses the widespread problem of poor household food inventory management — specifically the inability of Filipino consumers to consistently monitor expiration dates and meat freshness. This leads to two major consequences: unintentional food waste when items expire unnoticed, and financial loss from duplicate purchases due to the lack of a real-time digital inventory. The root cause is a 'knowledge gap' and a 'digital gap' in how households interact with perishable goods, where manual and memory-based tracking is both inefficient and error-prone.",
+  evidence:"Evidence from paper (Project Context): 'In the Philippines, modern households are having more and more trouble managing their inventories well because of a knowledge gap about perishable goods... only 19.6% of Filipino consumers make a habit of reading food product labels regularly.' Survey: '51.2% strongly agreed and 44.8% agreed that current manual methods are highly prone to human error.'"
+},
+{ cat:"genprob", tag:"tag-genprob", catLabel:"General Problems", diff:"medium",
+  q:"What financial consequences does poor grocery management have on Filipino households, based on your study?",
+  a:"The study identifies two direct financial consequences: (1) purchasing duplicate items because users lack a real-time record of what is already in stock — 41.3% strongly agreed and 38.8% agreed this happens to them; and (2) financial losses from food discarded after expiring unnoticed — 81.6% admitted unknowingly discarding expired items. The paper notes these recurring 'double-buying' incidents accumulate considerably across a fiscal year, depleting household budgets and reducing disposable income for other essentials.",
+  evidence:"Evidence from paper: '41.3% of respondents strongly agreeing and 38.8% agreeing that they often purchase duplicate items due to the lack of a current food supply record... Repeated occurrences of double-buying underscore a particular economic inefficiency that accumulates considerably throughout a fiscal year.' Survey: '38.8% strongly concurred and 42.8% concurred that they unintentionally discard items.'"
+},
+{ cat:"genprob", tag:"tag-genprob", catLabel:"General Problems", diff:"hard",
+  q:"Why is it not enough to simply tell consumers to be more careful about reading expiration dates? Why does a technological solution need to exist?",
+  a:"Research shows the problem is structural, not merely attentional. Huseynov and Palma (2021) found time constraints prevent working individuals from reviewing detailed label information. Kaur et al. (2024) showed information overload in retail environments leads shoppers to focus only on price or brand — not expiry dates. Hansen et al. (2023) documented 'choice frictions' where the physical effort of inspecting labels discourages consistent checking even when users intend to. Behavioral change alone is insufficient; automation must remove the cognitive and physical burden entirely — which is exactly what PantryGo's OCR and push notifications accomplish.",
+  evidence:"Evidence from paper (RRL): 'When in a hurry, consumers often prioritize prominent features like price or brand over less visible details such as expiration dates... Because locating and interpreting expiration dates requires additional cognitive effort, these safety markers are often ignored (Kaur et al., 2024)... Structured technological interventions are therefore necessary to counteract this inattention and provide immediate visibility of food conditions to the user.'"
+},
+
+/* ══════════════════════════════════════════════
+   TECHNICAL PROBLEMS
+══════════════════════════════════════════════ */
+{ cat:"techprob", tag:"tag-techprob", catLabel:"Technical Problems", diff:"medium",
+  q:"What technical challenges did you anticipate in implementing OCR for expiration date reading, and how did you address them?",
+  a:"The primary OCR challenges were: (1) Label variability — dates appear in many formats (MM/DD/YY, DD-MON-YYYY, stamped inkjet) which complicates pattern recognition. (2) Image quality dependence — faded ink, poor lighting, and low-resolution cameras cause misreads. (3) Reflective packaging — glossy surfaces create glare that disrupts text extraction. These were addressed through CameraX API's auto-focus and flash control to improve capture quality, and by allowing users to manually confirm and edit the scanned date before saving — acting as a human verification layer.",
+  evidence:"Evidence from paper (Limitations): 'Older devices, particularly those running Android 8.0 or below, or those with low-quality cameras (specifically under 8 megapixels) or a lack of autofocus function, may be unable to capture clear images.' Technical: 'By utilizing CameraX, the researchers were able to implement features like auto-focus and flash control, which help overcome limitations such as poor lighting or low-quality cameras on older devices.'"
+},
+{ cat:"techprob", tag:"tag-techprob", catLabel:"Technical Problems", diff:"medium",
+  q:"What types of testing did you conduct to ensure PantryGo works correctly?",
+  a:"Five types of testing were applied: (1) Unit testing — each feature tested in isolation (OCR date reading, CNN classification, notification triggers). (2) Integration testing — confirmed that separate features work together correctly, e.g., a scanned product is stored in Firestore and reflected on the dashboard in real time. (3) System testing — evaluated the entire application under simulated real-world scenarios for speed, accuracy, and reliability. (4) Compatibility testing — tested across multiple Android models to ensure consistent performance. (5) User acceptance testing — conducted with actual household users to gather firsthand feedback and identify usability concerns.",
+  evidence:"Evidence from paper (Testing Phase): 'Unit testing will be used to check each individual feature... Integration testing will then be carried out to confirm that these separate features work well together... System testing will evaluate the entire application as a whole... compatibility testing will also be performed across various Android phone models... user acceptance testing will be conducted with actual household users from the target group.'"
+},
+{ cat:"techprob", tag:"tag-techprob", catLabel:"Technical Problems", diff:"hard",
+  q:"What security measures does PantryGo implement to protect users' pantry data?",
+  a:"Three security layers: (1) Firebase Authentication — users must register and log in with verified credentials before accessing any pantry data. (2) Firestore security rules — database access is restricted so users can only access data linked to their own account or explicitly linked PantryID. (3) Decoupled Multi-tenant Architecture — individual credentials are separated from shared pantry data, so linking pantries does not expose personal account information to other users. During deployment, Cloud Firestore and authentication rules were transitioned to production mode to enforce these restrictions in a live environment.",
+  evidence:"Evidence from paper: 'The application includes a user authentication module powered by Firebase, requiring users to register and log in to access their data. This security layer ensures that household inventory levels are only synchronized across devices that have been authenticated under the same user credentials, maintaining the privacy of household consumption habits.' Deployment Phase: 'This step will secure Cloud Firestore and authentication rules to keep inventory data private.'"
+},
+
+/* ══════════════════════════════════════════════
+   CNN FRESHNESS ACCURACY
+══════════════════════════════════════════════ */
+{ cat:"cnn", tag:"tag-cnn", catLabel:"CNN Freshness Accuracy", diff:"hard",
+  q:"How sure are you that the CNN's freshness detection result for pork and chicken is actually accurate? What is your basis for trusting it?",
+  a:"The CNN's accuracy is grounded in three things: (1) MobileNetV2 was specifically trained on a meat freshness dataset, learning the color and texture patterns that distinguish fresh from spoiled pork and chicken — not general image knowledge. (2) USDA (2024) safety standards serve as the scientific benchmark for freshness classification and shelf-life estimates — giving the CNN output a validated, peer-referenced reference point. (3) The model is converted to TensorFlow Lite (.tflite) for on-device inference, ensuring results come from the trained model directly. That said, the system is positioned as a decision-support tool — not a replacement for professional food safety inspection — and the user is always shown the result for their own judgment.",
+  evidence:"Evidence from paper: 'The developers will use MobileNetV2... to ensure that the application can check the freshness of raw pork and chicken by analyzing their color and texture.' USDA: 'Previous research of The USDA (2024) states that storage temperature is the most critical factor for meat shelf life. Pork and chicken safety depends on temperature because harmful bacteria grow quickly between 40°F and 140°F. While refrigerated chicken lasts 1–2 days and pork 3–5 days.'"
+},
+{ cat:"cnn", tag:"tag-cnn", catLabel:"CNN Freshness Accuracy", diff:"hard",
+  q:"What if the meat looks fresh visually but is already contaminated with bacteria that cannot be seen by the camera? Isn't the CNN giving users a false sense of safety?",
+  a:"This is a valid and important limitation that is honestly acknowledged. The CNN analyzes only visible surface features — color and texture — and cannot detect microbial contamination, odor, or internal spoilage that has not yet surfaced visually. Bacterial growth can begin well before visible discoloration appears, especially if the cold chain was broken at any point. PantryGo is therefore positioned as a decision-support tool providing an early visual indicator, not a guarantee of absolute food safety. The USDA (2024) shelf-life guidelines (e.g., refrigerated chicken lasts 1-2 days, pork 3-5 days) serve as a complementary safety net, and users are always shown the result alongside these guidelines for informed decision-making.",
+  evidence:"Evidence from paper (Limitations): 'The CNN component is limited to analyzing the surface of raw, exposed meat.' USDA reference: 'Pork and chicken safety depends on temperature because harmful bacteria grow quickly between 40°F and 140°F. While refrigerated chicken lasts 1–2 days and pork 3–5 days; any kind of meat should not sit out for more than two hours thawed.' The paper frames CNN as an error-reduction tool, not an absolute food safety guarantor."
+},
+{ cat:"cnn", tag:"tag-cnn", catLabel:"CNN Freshness Accuracy", diff:"hard",
+  q:"What environmental factors could affect the CNN's classification result, and how did you account for them?",
+  a:"Four key environmental factors: (1) Lighting — poor or inconsistent light alters perceived meat color; CameraX flash control mitigates this. (2) Camera angle and distance — the meat must adequately fill the frame for texture analysis; the camera interface includes a framing guide. (3) Packaging and wrapping — meat inside plastic wrap or a styrofoam tray cannot be classified; it must be unpacked and exposed. (4) Frost on frozen meat — visually alters color and texture entirely, which is why frozen meat is explicitly excluded from CNN scanning.",
+  evidence:"Evidence from paper: 'By processing these images directly on the mobile device, the system stays responsive and ensures high accuracy even with poor lighting or lower-quality phone cameras.' Limitations: 'The CNN component is limited to analyzing the surface of raw, exposed meat... the system cannot accurately assess meat in a frozen state, as the presence of ice or frost alters the visual color and texture properties required for a correct classification. For reliable results, the meat must be unpacked and thawed.' CameraX: 'auto-focus and flash control, which help overcome limitations such as poor lighting.'"
+},
+
+/* ══════════════════════════════════════════════
+   TITLE & RATIONALE
+══════════════════════════════════════════════ */
+{ cat:"title", tag:"tag-title", catLabel:"Title & Rationale", diff:"easy",
+  q:"Why did you name the system PantryGo? What does the name signify?",
+  a:"The name PantryGo reflects the system's core purpose — managing the household pantry on-the-go via a mobile Android application. 'Pantry' refers to household food and grocery storage, while 'Go' conveys mobility and accessibility, emphasizing that users can monitor and manage their food inventory from anywhere, at any time, on their smartphones.",
+  evidence:"Evidence from paper (Purpose & Description): 'PantryGo is a grocery management system that allows users to scan food items with expiration dates using their mobile phones... the application ensures that users can securely view, monitor, and manage their real-time household inventory at any time.'"
+},
+{ cat:"title", tag:"tag-title", catLabel:"Title & Rationale", diff:"medium",
+  q:"What specifically is automated in PantryGo, and what remains manual?",
+  a:"Automated: (1) expiration date extraction via OCR, (2) meat freshness classification via CNN, and (3) push notification alerts before items expire. Manual: product name entry — deliberately excluded from OCR due to the extreme variability in commercial packaging designs and reflective materials.",
+  evidence:"Evidence from paper (Limitations): 'The application does not utilize OCR for brand name identification due to the extreme variability in commercial packaging designs and reflective materials. Instead, product names are manually encoded by the user to maintain a reliable and accurate inventory database while the automated module focuses strictly on the critical extraction of shelf-life data.'"
+},
+
+/* ══════════════════════════════════════════════
+   ALGORITHM
+══════════════════════════════════════════════ */
+{ cat:"algo", tag:"tag-algo", catLabel:"Algorithm / OCR / CNN", diff:"medium",
+  q:"Why did you choose MobileNetV2 as your CNN architecture? Why not VGG16 or ResNet?",
+  a:"MobileNetV2 uses depthwise separable convolutions that significantly reduce parameters and computational load compared to VGG16 or ResNet-50. This makes it suitable for real-time on-device inference on a consumer Android smartphone without server-side processing — directly supporting offline-capable, responsive performance as a design goal.",
+  evidence:"Evidence from paper: 'TensorFlow is the open-source machine learning framework that will be used by the researchers to train and develop the MobileNetV2 model. This optimization allows PantryGo to execute real-time freshness detection directly on the smartphone... the system balances advanced image analysis with mobile constraints, ensuring a responsive user experience with minimal computational overhead.'"
+},
+
+/* ══════════════════════════════════════════════
+   RESEARCH GAP
+══════════════════════════════════════════════ */
+{ cat:"gap", tag:"tag-gap", catLabel:"Research Gap", diff:"medium",
+  q:"What specific research gap does PantryGo address that existing systems failed to fill?",
+  a:"Existing systems are siloed — Dospinescu et al. (2025) uses OCR for expiration tracking, Caña et al. (2023) uses CNN for food identification — but none combine both in a single collaborative household platform. There is also a behavioral gap: existing systems provide data but ignore 'choice frictions' and 'mental gaps' that prevent users from acting on that data. PantryGo bridges both by unifying OCR, CNN freshness detection, automated notifications, and multi-user PantryID sharing.",
+  evidence:"Evidence from paper (Synthesis): 'The gap in current research is the lack of a unified tool that addresses both technical limitations and the reality of human behavior. While advanced technologies like OCR and CNN exist, they are rarely combined into a single platform that handles both packaged goods and raw meats. Moreover, most existing systems are designed for a single user, failing to account for the collaborative nature of household management.'"
+},
+
+/* ══════════════════════════════════════════════
+   SURVEY RESULTS
+══════════════════════════════════════════════ */
+{ cat:"survey", tag:"tag-survey", catLabel:"Survey Results", diff:"easy",
+  q:"How many respondents participated in your survey, and what are the most critical findings that justify PantryGo?",
+  a:"201 respondents. Five critical findings: (1) 91% found it difficult to read expiration dates; (2) 81.6% admitted unknowingly discarding expired items; (3) 92.5% agreed bulk shopping complicates date monitoring; (4) 96% agreed manual methods are prone to human error; and (5) 95.5% said they would find automated expiry notifications helpful. These collectively provide strong, quantified evidence for each of PantryGo's core features.",
+  evidence:"Evidence from paper: '59.7% strongly agreed and 31.3% agreed that they find it difficult to read or locate expiration dates... 38.8% strongly concurred and 42.8% concurred that they unintentionally discard items... 51.2% strongly agreed and 44.8% agreed that current manual methods are highly prone to human error... 45.3% strongly agreed and 50.2% agreed that they would find it helpful if a digital system automatically notified them about food expiration dates.'"
+},
+
+/* ══════════════════════════════════════════════
+   SCOPE & LIMITATIONS
+══════════════════════════════════════════════ */
+{ cat:"scope", tag:"tag-scope", catLabel:"Scope & Limitations", diff:"medium",
+  q:"Why is the PantryID limited to only 3 concurrent users?",
+  a:"The 3-user cap aligns with the average Filipino household size and ensures optimal Firestore synchronization performance. Allowing more simultaneous users would introduce synchronization complexity and potential data latency. For larger households, this is acknowledged as a limitation, with future scalable multi-tenant architectures proposed as a direction for further research.",
+  evidence:"Evidence from paper (Limitations): 'Another primary delimitation of this architecture is its localized scalability, which is restricted to a maximum of three concurrent users per unique Pantry ID. This constraint is intentionally established to align with the average size of the target Filipino household while ensuring the application maintains optimal performance and real-time data integrity.'"
+}
+
+];
+
+var CATS = [
+  { key:"all",      label:"All" },
+  { key:"ben",      label:"Target Beneficiaries" },
+  { key:"ui",       label:"UI & Features" },
+  { key:"genprob",  label:"General Problems" },
+  { key:"techprob", label:"Technical Problems" },
+  { key:"cnn",      label:"CNN Accuracy" },
+  { key:"title",    label:"Title & Rationale" },
+  { key:"algo",     label:"Algorithm" },
+  { key:"gap",      label:"Research Gap" },
+  { key:"survey",   label:"Survey Results" },
+  { key:"scope",    label:"Scope & Limitations" },
+];
+
+var DIFF_LABEL = { easy:"Easy", medium:"Medium", hard:"Hard" };
+var DIFF_CLASS = { easy:"diff-easy", medium:"diff-medium", hard:"diff-hard" };
+
+var activeCat = "all";
+var filtered = ALL.slice();
+var idx = 0;
+var revealed = 0;
+
+function getFiltered() {
+  if (activeCat === "all") return ALL.slice();
+  return ALL.filter(function(q){ return q.cat === activeCat; });
+}
+
+function renderStats() {
+  var total = ALL.length;
+  var hard = ALL.filter(function(q){ return q.diff === "hard"; }).length;
+  document.getElementById("stats").innerHTML =
+    '<div class="stat"><b>' + total + '</b> total questions</div>' +
+    '<div class="stat"><b>' + hard + '</b> hard questions</div>' +
+    '<div class="stat"><b>' + (CATS.length-1) + '</b> categories</div>';
+}
+
+function renderCats() {
+  document.getElementById("cats").innerHTML = CATS.map(function(c){
+    var cnt = c.key === "all" ? ALL.length : ALL.filter(function(q){ return q.cat===c.key; }).length;
+    return '<button class="cat-btn'+(activeCat===c.key?' active':'')+'" onclick="setCat(\''+c.key+'\')">'
+      +c.label+' <span style="opacity:0.5;font-size:11px;">('+cnt+')</span></button>';
+  }).join("");
+}
+
+function setCat(k) {
+  activeCat = k; filtered = getFiltered(); idx = 0; revealed = 0;
+  renderCats(); renderQ();
+}
+
+function updateBar() {
+  var pct = filtered.length ? Math.round(revealed/filtered.length*100) : 0;
+  document.getElementById("scorefill").style.width = pct + "%";
+}
+
+function renderQ() {
+  var el = document.getElementById("qlist");
+  if (!filtered.length) { el.innerHTML = "<p style='color:#999;font-size:14px;padding:1rem 0;'>No questions in this category.</p>"; return; }
+  var q = filtered[idx];
+  document.getElementById("progress").textContent = "Question " + (idx+1) + " of " + filtered.length;
+  el.innerHTML =
+    '<div class="q-card">'
+    +'<div class="q-meta"><span class="q-num">Q'+(idx+1)+'</span><span class="q-tag '+q.tag+'">'+q.catLabel+'</span><span class="diff '+DIFF_CLASS[q.diff]+'" style="margin-left:auto;">'+DIFF_LABEL[q.diff]+'</span></div>'
+    +'<div class="q-text">'+q.q+'</div>'
+    +'<button class="show-btn" id="revbtn" onclick="toggleAns()">Show model answer</button>'
+    +'<div class="answer" id="ans">'
+    +'<p class="answer-text">'+q.a+'</p>'
+    +'<div class="evidence"><div class="ev-label">Evidence from paper</div><p>'+q.evidence+'</p></div>'
+    +'</div></div>';
+  updateBar();
+}
+
+function toggleAns() {
+  var ans = document.getElementById("ans");
+  var btn = document.getElementById("revbtn");
+  var v = ans.classList.toggle("visible");
+  if (v) { revealed = Math.min(revealed+1, filtered.length); updateBar(); }
+  btn.textContent = v ? "Hide answer" : "Show model answer";
+}
+
+function nextQ() { if(idx<filtered.length-1){ idx++; renderQ(); } }
+function prevQ() { if(idx>0){ idx--; renderQ(); } }
+function shuffleQ() { filtered = filtered.sort(function(){ return Math.random()-0.5; }); idx=0; revealed=0; renderQ(); }
+
+function showAll() {
+  var el = document.getElementById("qlist");
+  el.innerHTML = filtered.map(function(q,i){
+    return '<div class="q-card">'
+      +'<div class="q-meta"><span class="q-num">Q'+(i+1)+'</span><span class="q-tag '+q.tag+'">'+q.catLabel+'</span><span class="diff '+DIFF_CLASS[q.diff]+'" style="margin-left:auto;">'+DIFF_LABEL[q.diff]+'</span></div>'
+      +'<div class="q-text">'+q.q+'</div>'
+      +'<div class="answer visible"><p class="answer-text">'+q.a+'</p>'
+      +'<div class="evidence"><div class="ev-label">Evidence from paper</div><p>'+q.evidence+'</p></div>'
+      +'</div></div>';
+  }).join("");
+  document.getElementById("scorefill").style.width = "100%";
+  document.getElementById("progress").textContent = "Showing all " + filtered.length + " questions";
+}
+
+renderStats(); renderCats(); renderQ();
+</script>
+</body>
+</html>
